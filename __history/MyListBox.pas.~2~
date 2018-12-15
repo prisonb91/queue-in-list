@@ -1,0 +1,169 @@
+unit MyListBox;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.Classes, Vcl.StdCtrls, Vcl.Controls, System.Generics.Collections;
+
+type
+
+  TMyListBoxElement = record
+    StatesArray: TArray<string>;
+    StatArray: TArray<string>;
+    State: integer;
+
+    constructor Create(AStatesArray, AStatArray: TArray<string>);
+  end;
+
+  TMyListBox = class(TListBox)
+  private
+    FList: TList<TMyListBoxElement>;
+
+    procedure UpdateVisualList;
+
+    procedure WMKeyDown(var Message: TWMKeyDown); message WM_KEYDOWN;
+    procedure DblClick(Sender: TObject);
+    function GetElements(index: integer): TMyListBoxElement;
+    procedure SetElements(index: integer; const Value: TMyListBoxElement);
+
+  public
+    procedure Add(e: TMyListBoxElement);
+    procedure Insert(e: TMyListBoxElement; index: integer);
+    procedure Delete(index: integer);
+    property Elements[index: integer]: TMyListBoxElement read GetElements write SetElements;
+
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+  end;
+
+implementation
+
+{ TMyListBox }
+
+constructor TMyListBox.Create(AOwner: TComponent);
+begin
+  inherited;
+
+  FList := TList<TMyListBoxElement>.Create; // Создали список который может хранить в себе строки
+
+  OnDblClick := DblClick; // Событие двойной клик у ListBox
+end;
+
+destructor TMyListBox.Destroy;
+begin
+  FList.Destroy; // Уничтожение Списка
+
+  inherited;
+end;
+
+procedure TMyListBox.UpdateVisualList;
+var
+  i: integer;
+begin
+  Items.BeginUpdate;
+
+  Items.Clear; // Чистим ListBox
+  for i := 0 to FList.Count - 1 do // Проходим по массиву FList
+    with FList[i] do // Увеличиваем i делаем смещение по массиву FList
+      Items.Add(StatesArray[State]); // Добавляем в ListBox каждый элемент получен из FList
+             // StatesArray строка ['1','2','3','4','5'] State смещяетс по массиву в строке
+  Items.EndUpdate;
+end;
+
+procedure TMyListBox.WMKeyDown(var Message: TWMKeyDown);
+var
+  t: TMyListBoxElement;
+  i: integer;
+begin
+  if ItemIndex = -1 then
+    exit;
+  i := ItemIndex;
+
+  case Message.CharCode of
+    VK_DELETE:
+      begin
+        Delete(i);
+        ItemIndex := i - 1;
+      end;
+
+    VK_UP:
+      if ItemIndex > 0 then
+      begin
+        t := FList[i];
+        Delete(i);
+        Insert(t, i - 1);
+        ItemIndex := i - 1;
+      end;
+
+    VK_DOWN:
+      if ItemIndex < Items.Count - 1 then
+      begin
+        t := FList[i];
+        Delete(i);
+        Insert(t, i + 1);
+        ItemIndex := i + 1;
+      end;
+  end;
+end;
+
+procedure TMyListBox.DblClick(Sender: TObject);
+var
+  t: TMyListBoxElement;
+  i, ii: integer;
+begin
+  if ItemIndex = -1 then
+    exit;
+  ii := ItemIndex;
+
+  t := FList[ii];
+
+  t.State := t.State + 1;
+  if t.State > Length(t.StatesArray) - 1 then
+    t.State := 0;
+
+  FList[ii] := t;
+
+  UpdateVisualList;
+
+  ItemIndex := ii;
+end;
+
+procedure TMyListBox.Add(e: TMyListBoxElement);
+begin
+  FList.Add(e);
+  UpdateVisualList;
+end;
+
+procedure TMyListBox.Insert(e: TMyListBoxElement; index: integer);
+begin
+  FList.Insert(index, e);
+  UpdateVisualList;
+end;
+
+function TMyListBox.GetElements(index: integer): TMyListBoxElement;
+begin
+  result := FList[index];
+end;
+
+procedure TMyListBox.SetElements(index: integer; const Value: TMyListBoxElement);
+begin
+  FList[index] := Value;
+  UpdateVisualList;
+end;
+
+procedure TMyListBox.Delete(index: integer);
+begin
+  FList.Delete(index);
+  UpdateVisualList;
+end;
+
+{ TMyListBoxElement }
+
+constructor TMyListBoxElement.Create(AStatesArray, AStatArray: TArray<string>);
+begin
+  StatesArray := AStatesArray;
+  StatArray := AStatArray;
+  State := 0;
+end;
+
+end.
